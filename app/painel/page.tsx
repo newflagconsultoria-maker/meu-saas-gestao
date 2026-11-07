@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
+import { Logo } from '@/components/logo'
 import { 
   Bell, 
   Plus, 
@@ -469,15 +470,14 @@ export default function PainelKeelPage() {
         
         {/* NAVEGAÇÃO SUPERIOR */}
         <header className="flex flex-wrap items-center justify-between gap-4 mb-8">
-          <div className="flex items-center gap-4">
-            <div className="w-11 h-11 rounded-2xl bg-[#181C25] text-white flex items-center justify-center font-black text-xl shadow-sm">
-              K
-            </div>
+          <div className="flex items-center gap-5">
+            <Logo className="h-7 text-[#181C25]" />
+            <div className="h-7 w-px bg-black/10 hidden md:block" />
             <div>
-              <span className="text-xs font-semibold uppercase tracking-widest text-[#6B6F78] block">
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#6B6F78] block">
                 Workspace Ativo
               </span>
-              <h2 className="text-base font-bold text-[#181C25]">
+              <h2 className="text-sm font-bold text-[#181C25]">
                 {profile?.organizations?.name || 'A carregar empresa...'}
               </h2>
             </div>
