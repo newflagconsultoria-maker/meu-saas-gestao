@@ -14,9 +14,11 @@ import {
   LogOut,
   Calendar,
   Wallet,
-  Receipt,
   Copy,
-  Check
+  Check,
+  Search,
+  Filter,
+  AlertTriangle
 } from 'lucide-react'
 
 interface Transaction {
@@ -69,7 +71,11 @@ export default function PainelKeelPage() {
   const [catalog, setCatalog] = useState<CatalogItem[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Modais de Criação e Edição
+  // Filtros avançados para a aba de transações
+  const [txSearch, setTxSearch] = useState('')
+  const [txMethodFilter, setTxMethodFilter] = useState<'all' | 'pix' | 'cash' | 'credit_card' | 'debit_card'>('all')
+
+  // Modais
   const [showAlerts, setShowAlerts] = useState(false)
   const [showNewTxModal, setShowNewTxModal] = useState(false)
   const [showNewCustomerModal, setShowNewCustomerModal] = useState(false)
@@ -77,7 +83,7 @@ export default function PainelKeelPage() {
   const [showCashCloseModal, setShowCashCloseModal] = useState(false)
   const [copiedSummary, setCopiedSummary] = useState(false)
   
-  // Estado para Edição
+  // Edição
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [editingCatalogItem, setEditingCatalogItem] = useState<CatalogItem | null>(null)
 
@@ -100,6 +106,7 @@ export default function PainelKeelPage() {
   const [itemType, setItemType] = useState<'service' | 'product'>('service')
   const [itemPrice, setItemPrice] = useState('')
   const [itemCost, setItemCost] = useState('')
+  const [itemStock, setItemStock] = useState('')
 
   const router = useRouter()
   const supabase = createClient()
@@ -165,7 +172,7 @@ export default function PainelKeelPage() {
     }
   }
 
-  // Filtragem temporal ativa
+  // Filtragem temporal
   const filteredTransactions = transactions.filter((t) => {
     if (timeFilter === 'all') return true
     const txDate = new Date(t.occurred_at)
@@ -192,7 +199,15 @@ export default function PainelKeelPage() {
     return true
   })
 
-  // Transações especificamente do dia de hoje (para o Fecho de Caixa)
+  // Transações com filtro de busca e método de pagamento (Aba Transações)
+  const tabTransactions = filteredTransactions.filter((t) => {
+    const matchesSearch = t.description.toLowerCase().includes(txSearch.toLowerCase()) ||
+                          t.category.toLowerCase().includes(txSearch.toLowerCase())
+    const matchesMethod = txMethodFilter === 'all' || t.payment_method === txMethodFilter
+    return matchesSearch && matchesMethod
+  })
+
+  // Transações de hoje para Fecho de Caixa
   const todayTransactions = transactions.filter((t) => {
     const txDate = new Date(t.occurred_at)
     const now = new Date()
@@ -203,31 +218,18 @@ export default function PainelKeelPage() {
     )
   })
 
-  // Cálculos do Fecho de Caixa de Hoje
   const todayIncomes = todayTransactions.filter((t) => t.type === 'income')
   const todayExpenses = todayTransactions.filter((t) => t.type === 'expense')
-
   const todayGrossRevenue = todayIncomes.reduce((acc, t) => acc + Number(t.total_amount), 0)
   const todayTotalExpenses = todayExpenses.reduce((acc, t) => acc + Number(t.total_amount), 0)
   const todayNetProfit = todayTransactions.reduce((acc, t) => acc + Number(t.net_profit), 0)
 
-  const cashInDrawer = todayIncomes
-    .filter((t) => t.payment_method === 'cash')
-    .reduce((acc, t) => acc + Number(t.total_amount), 0)
+  const cashInDrawer = todayIncomes.filter((t) => t.payment_method === 'cash').reduce((acc, t) => acc + Number(t.total_amount), 0)
+  const pixIncomes = todayIncomes.filter((t) => t.payment_method === 'pix').reduce((acc, t) => acc + Number(t.total_amount), 0)
+  const creditIncomes = todayIncomes.filter((t) => t.payment_method === 'credit_card').reduce((acc, t) => acc + Number(t.total_amount), 0)
+  const debitIncomes = todayIncomes.filter((t) => t.payment_method === 'debit_card').reduce((acc, t) => acc + Number(t.total_amount), 0)
 
-  const pixIncomes = todayIncomes
-    .filter((t) => t.payment_method === 'pix')
-    .reduce((acc, t) => acc + Number(t.total_amount), 0)
-
-  const creditIncomes = todayIncomes
-    .filter((t) => t.payment_method === 'credit_card')
-    .reduce((acc, t) => acc + Number(t.total_amount), 0)
-
-  const debitIncomes = todayIncomes
-    .filter((t) => t.payment_method === 'debit_card')
-    .reduce((acc, t) => acc + Number(t.total_amount), 0)
-
-  // Métricas do Período Selecionado
+  // Métricas do Período
   const grossRevenue = filteredTransactions
     .filter((t) => t.type === 'income')
     .reduce((acc, t) => acc + Number(t.total_amount), 0)
@@ -252,19 +254,19 @@ export default function PainelKeelPage() {
       `💰 *Faturação Bruta:* R$ ${todayGrossRevenue.toFixed(2)}\n` +
       `🔻 *Despesas:* R$ ${todayTotalExpenses.toFixed(2)}\n` +
       `✨ *Lucro Líquido Real:* R$ ${todayNetProfit.toFixed(2)}\n\n` +
-      `*Discriminativo de Recebimento:*\n` +
+      `*Discriminativo:*\n` +
       `💵 Dinheiro (Gaveta): R$ ${cashInDrawer.toFixed(2)}\n` +
       `⚡ PIX: R$ ${pixIncomes.toFixed(2)}\n` +
       `💳 Cartão de Crédito: R$ ${creditIncomes.toFixed(2)}\n` +
       `💳 Cartão de Débito: R$ ${debitIncomes.toFixed(2)}\n\n` +
-      `Total de Atendimentos: ${todayIncomes.length}`
+      `Total de Vendas: ${todayIncomes.length}`
 
     navigator.clipboard.writeText(text)
     setCopiedSummary(true)
     setTimeout(() => setCopiedSummary(false), 2500)
   }
 
-  // Ações de Transação (PDV)
+  // Lançamento com baixa de stock automática
   async function handleCreateTransaction(e: React.FormEvent) {
     e.preventDefault()
     if (!profile?.organization_id) return
@@ -284,18 +286,37 @@ export default function PainelKeelPage() {
       payment_method: txMethod,
     })
 
-    if (!error && selectedCustomerId && txType === 'income') {
-      const cust = customers.find((c) => c.id === selectedCustomerId)
-      if (cust) {
-        const updatedSpent = Number(cust.total_spent || 0) + amountNum
-        await supabase
-          .from('customers')
-          .update({ total_spent: updatedSpent, last_visit: new Date().toISOString() })
-          .eq('id', selectedCustomerId)
-        
-        setCustomers((prev) =>
-          prev.map((c) => (c.id === selectedCustomerId ? { ...c, total_spent: updatedSpent, last_visit: new Date().toISOString() } : c))
-        )
+    if (!error) {
+      // Baixa no stock se o item for um produto e possuir quantidade registada
+      if (selectedCatalogId && txType === 'income') {
+        const item = catalog.find((c) => c.id === selectedCatalogId)
+        if (item && item.type === 'product' && item.stock_qty !== null && item.stock_qty > 0) {
+          const nextStock = item.stock_qty - 1
+          await supabase
+            .from('catalog_items')
+            .update({ stock_qty: nextStock })
+            .eq('id', item.id)
+
+          setCatalog((prev) =>
+            prev.map((c) => (c.id === item.id ? { ...c, stock_qty: nextStock } : c))
+          )
+        }
+      }
+
+      // Atualiza o acumulado de gastos do cliente
+      if (selectedCustomerId && txType === 'income') {
+        const cust = customers.find((c) => c.id === selectedCustomerId)
+        if (cust) {
+          const updatedSpent = Number(cust.total_spent || 0) + amountNum
+          await supabase
+            .from('customers')
+            .update({ total_spent: updatedSpent, last_visit: new Date().toISOString() })
+            .eq('id', selectedCustomerId)
+          
+          setCustomers((prev) =>
+            prev.map((c) => (c.id === selectedCustomerId ? { ...c, total_spent: updatedSpent, last_visit: new Date().toISOString() } : c))
+          )
+        }
       }
     }
 
@@ -370,6 +391,7 @@ export default function PainelKeelPage() {
 
     const salePriceNum = parseFloat(itemPrice.replace(',', '.')) || 0
     const costPriceNum = parseFloat(itemCost.replace(',', '.')) || 0
+    const stockQtyNum = itemType === 'product' && itemStock !== '' ? parseInt(itemStock) : null
 
     if (editingCatalogItem) {
       const { error } = await supabase
@@ -379,6 +401,7 @@ export default function PainelKeelPage() {
           type: itemType,
           sale_price: salePriceNum,
           cost_price: costPriceNum,
+          stock_qty: stockQtyNum,
         })
         .eq('id', editingCatalogItem.id)
 
@@ -386,7 +409,7 @@ export default function PainelKeelPage() {
         setCatalog((prev) =>
           prev.map((item) =>
             item.id === editingCatalogItem.id
-              ? { ...item, name: itemName, type: itemType, sale_price: salePriceNum, cost_price: costPriceNum }
+              ? { ...item, name: itemName, type: itemType, sale_price: salePriceNum, cost_price: costPriceNum, stock_qty: stockQtyNum }
               : item
           )
         )
@@ -394,6 +417,7 @@ export default function PainelKeelPage() {
         setItemName('')
         setItemPrice('')
         setItemCost('')
+        setItemStock('')
         setShowNewCatalogModal(false)
       }
     } else {
@@ -405,6 +429,7 @@ export default function PainelKeelPage() {
           type: itemType,
           sale_price: salePriceNum,
           cost_price: costPriceNum,
+          stock_qty: stockQtyNum,
         })
         .select()
         .single()
@@ -414,6 +439,7 @@ export default function PainelKeelPage() {
         setItemName('')
         setItemPrice('')
         setItemCost('')
+        setItemStock('')
         setShowNewCatalogModal(false)
       }
     }
@@ -802,14 +828,14 @@ export default function PainelKeelPage() {
           </div>
         )}
 
-        {/* ABA 3: TRANSAÇÕES */}
+        {/* ABA 3: TRANSAÇÕES COM PESQUISA E FILTRO DE PAGAMENTO */}
         {activeTab === 'transactions' && (
           <div className="bg-white rounded-[28px] p-6 md:p-8 border border-black/5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-[#181C25]">Histórico de Transações</h2>
                 <p className="text-xs text-[#6B6F78]">
-                  Entradas e saídas correspondentes ao período: <strong>{timeFilter === 'today' ? 'Hoje' : timeFilter === '7days' ? 'Últimos 7 dias' : timeFilter === 'month' ? 'Este Mês' : 'Total'}</strong>
+                  Entradas e saídas no período ({timeFilter === 'today' ? 'Hoje' : timeFilter === '7days' ? '7 dias' : timeFilter === 'month' ? 'Este Mês' : 'Total'})
                 </p>
               </div>
               <button
@@ -821,56 +847,100 @@ export default function PainelKeelPage() {
               </button>
             </div>
 
-            <div className="divide-y divide-black/5">
-              {filteredTransactions.map((t) => (
-                <div key={t.id} className="py-4 flex items-center justify-between gap-4 text-sm">
-                  <div className="flex items-center gap-3.5">
-                    <div
-                      className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold ${
-                        t.type === 'income' ? 'bg-[#71FC8F]' : 'bg-[#181C25] text-white'
-                      }`}
-                    >
-                      {t.type === 'income' ? '+' : '-'}
-                    </div>
-                    <div>
-                      <div className="font-bold text-[#181C25]">{t.description}</div>
-                      <div className="text-xs text-[#6B6F78]">
-                        {t.payment_method.toUpperCase()} • {new Date(t.occurred_at).toLocaleString('pt-BR')}
-                      </div>
-                    </div>
-                  </div>
+            {/* Barra de Filtros e Pesquisa */}
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-6 p-2 bg-[#F8F9FB] rounded-2xl border border-black/5">
+              <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-black/5 flex-1 min-w-[220px]">
+                <Search className="w-4 h-4 text-[#6B6F78]" />
+                <input
+                  type="text"
+                  value={txSearch}
+                  onChange={(e) => setTxSearch(e.target.value)}
+                  placeholder="Pesquisar por descrição..."
+                  className="w-full text-xs text-[#181C25] bg-transparent focus:outline-none"
+                />
+                {txSearch && (
+                  <button onClick={() => setTxSearch('')} className="text-[#6B6F78] hover:text-[#181C25]">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
 
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <div className="font-bold text-[#181C25]">
-                        {t.type === 'income' ? '+' : '-'} R$ {Number(t.total_amount).toFixed(2)}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-[#6B6F78] flex items-center gap-1 pl-1">
+                  <Filter className="w-3.5 h-3.5" /> Método:
+                </span>
+                {(['all', 'pix', 'cash', 'credit_card', 'debit_card'] as const).map((method) => (
+                  <button
+                    key={method}
+                    onClick={() => setTxMethodFilter(method)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                      txMethodFilter === method
+                        ? 'bg-[#181C25] text-[#71FC8F]'
+                        : 'bg-white text-[#6B6F78] border border-black/5 hover:text-[#181C25]'
+                    }`}
+                  >
+                    {method === 'all' ? 'Todos' : method === 'cash' ? 'Dinheiro' : method.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {tabTransactions.length === 0 ? (
+              <div className="py-16 text-center text-sm text-[#6B6F78]">
+                Nenhuma transação encontrada com os filtros aplicados.
+              </div>
+            ) : (
+              <div className="divide-y divide-black/5">
+                {tabTransactions.map((t) => (
+                  <div key={t.id} className="py-4 flex items-center justify-between gap-4 text-sm">
+                    <div className="flex items-center gap-3.5">
+                      <div
+                        className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold ${
+                          t.type === 'income' ? 'bg-[#71FC8F] text-[#181C25]' : 'bg-[#181C25] text-white'
+                        }`}
+                      >
+                        {t.type === 'income' ? '+' : '-'}
                       </div>
-                      <div className="text-xs text-[#6B6F78]">
-                        Lucro Líquido: R$ {Number(t.net_profit).toFixed(2)}
+                      <div>
+                        <div className="font-bold text-[#181C25]">{t.description}</div>
+                        <div className="text-xs text-[#6B6F78]">
+                          {t.payment_method.toUpperCase()} • {new Date(t.occurred_at).toLocaleString('pt-BR')}
+                        </div>
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleDeleteTransaction(t.id)}
-                      className="p-2 text-[#6B6F78] hover:text-rose-600 transition"
-                      title="Excluir"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div className="font-bold text-[#181C25]">
+                          {t.type === 'income' ? '+' : '-'} R$ {Number(t.total_amount).toFixed(2)}
+                        </div>
+                        <div className="text-xs text-[#6B6F78]">
+                          Lucro Líquido: R$ {Number(t.net_profit).toFixed(2)}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteTransaction(t.id)}
+                        className="p-2 text-[#6B6F78] hover:text-rose-600 transition"
+                        title="Excluir"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {/* ABA 4: CATÁLOGO */}
+        {/* ABA 4: CATÁLOGO COM INDICADORES DE STOCK */}
         {activeTab === 'catalog' && (
           <div className="bg-white rounded-[28px] p-6 md:p-8 border border-black/5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-[#181C25]">Catálogo de Serviços e Produtos</h2>
                 <p className="text-xs text-[#6B6F78]">
-                  Edite valores e custos para manter o cálculo de lucro atualizado
+                  Controle de preços, margem líquida e stock de produtos
                 </p>
               </div>
               <button
@@ -879,6 +949,7 @@ export default function PainelKeelPage() {
                   setItemName('')
                   setItemPrice('')
                   setItemCost('')
+                  setItemStock('')
                   setShowNewCatalogModal(true)
                 }}
                 className="px-5 py-2.5 rounded-2xl bg-[#181C25] text-white text-xs font-semibold flex items-center gap-2"
@@ -890,19 +961,31 @@ export default function PainelKeelPage() {
 
             {catalog.length === 0 ? (
               <div className="py-16 text-center text-sm text-[#6B6F78]">
-                Nenhum serviço ou produto cadastrado.
+                Nenhum serviço ou produto registado.
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {catalog.map((item) => {
                   const itemProfit = Number(item.sale_price) - Number(item.cost_price)
+                  const isOutOfStock = item.type === 'product' && item.stock_qty !== null && item.stock_qty <= 0
+
                   return (
                     <div key={item.id} className="p-5 rounded-2xl bg-[#F8F9FB] border border-black/5 flex flex-col justify-between">
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#181C25] text-white">
-                            {item.type === 'service' ? 'Serviço' : 'Produto'}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#181C25] text-white">
+                              {item.type === 'service' ? 'Serviço' : 'Produto'}
+                            </span>
+                            {item.type === 'product' && (
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                isOutOfStock ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-700'
+                              }`}>
+                                {isOutOfStock ? 'Sem Stock' : `${item.stock_qty ?? 0} em stock`}
+                              </span>
+                            )}
+                          </div>
+
                           <div className="flex items-center gap-1">
                             <button
                               onClick={() => {
@@ -911,6 +994,7 @@ export default function PainelKeelPage() {
                                 setItemType(item.type)
                                 setItemPrice(String(item.sale_price))
                                 setItemCost(String(item.cost_price))
+                                setItemStock(item.stock_qty !== null ? String(item.stock_qty) : '')
                                 setShowNewCatalogModal(true)
                               }}
                               className="p-1 rounded hover:bg-black/5 text-[#6B6F78]"
@@ -954,9 +1038,7 @@ export default function PainelKeelPage() {
 
       </div>
 
-      {/* =======================================================================
-          MODAL: FECHO DE CAIXA DO DIA (NOVO)
-         ======================================================================= */}
+      {/* MODAL FECHO DE CAIXA */}
       {showCashCloseModal && (
         <div className="fixed inset-0 bg-[#181C25]/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-[32px] max-w-lg w-full p-7 md:p-8 shadow-2xl border border-black/5">
@@ -977,7 +1059,6 @@ export default function PainelKeelPage() {
               </button>
             </div>
 
-            {/* Resumo Consolidado do Dia */}
             <div className="grid grid-cols-3 gap-3 mb-6">
               <div className="bg-[#F8F9FB] border border-black/5 rounded-2xl p-3.5 text-center">
                 <span className="text-[11px] text-[#6B6F78] block mb-1">Entradas</span>
@@ -1001,7 +1082,6 @@ export default function PainelKeelPage() {
               </div>
             </div>
 
-            {/* Discriminativo por Meio de Pagamento */}
             <div className="space-y-2.5 mb-6">
               <span className="text-xs font-semibold text-[#6B6F78] block">
                 Discriminativo dos Recebimentos:
@@ -1020,7 +1100,7 @@ export default function PainelKeelPage() {
               <div className="p-3.5 rounded-2xl bg-[#F8F9FB] border border-black/5 flex items-center justify-between">
                 <div>
                   <span className="text-xs font-semibold text-[#181C25] block">⚡ PIX (Bancário)</span>
-                  <span className="text-[11px] text-[#6B6F78]">Entradas instantâneas em conta</span>
+                  <span className="text-[11px] text-[#6B6F78]">Entradas em conta</span>
                 </div>
                 <strong className="text-sm font-bold text-[#181C25]">
                   R$ {pixIncomes.toFixed(2)}
@@ -1113,7 +1193,7 @@ export default function PainelKeelPage() {
               {txType === 'income' && catalog.length > 0 && (
                 <div>
                   <label className="block text-xs font-semibold text-[#6B6F78] mb-1">
-                    Selecionar do Catálogo (Preenche valor e custo)
+                    Selecionar do Catálogo (Preenche valor, custo e dá baixa)
                   </label>
                   <select
                     value={selectedCatalogId}
@@ -1123,7 +1203,7 @@ export default function PainelKeelPage() {
                     <option value="">Lançamento Avulso (Sem catálogo)</option>
                     {catalog.map((item) => (
                       <option key={item.id} value={item.id}>
-                        {item.name} — R$ {Number(item.sale_price).toFixed(2)}
+                        {item.name} — R$ {Number(item.sale_price).toFixed(2)} {item.type === 'product' && item.stock_qty !== null ? `(${item.stock_qty} restam)` : ''}
                       </option>
                     ))}
                   </select>
@@ -1155,7 +1235,7 @@ export default function PainelKeelPage() {
                   required
                   value={txDesc}
                   onChange={(e) => setTxDesc(e.target.value)}
-                  placeholder={txType === 'income' ? 'Ex: Corte Masculino ou Venda de Item' : 'Ex: Compra de Lâminas / Luz'}
+                  placeholder={txType === 'income' ? 'Ex: Corte Degradê ou Pomada Matte' : 'Ex: Compra de Lâminas / Luz'}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#F5F6F8] text-sm text-[#181C25] focus:outline-none"
                 />
               </div>
@@ -1321,6 +1401,20 @@ export default function PainelKeelPage() {
                   />
                 </div>
               </div>
+
+              {itemType === 'product' && (
+                <div>
+                  <label className="block text-xs font-semibold text-[#6B6F78] mb-1">Quantidade em Stock</label>
+                  <input
+                    type="number"
+                    value={itemStock}
+                    onChange={(e) => setItemStock(e.target.value)}
+                    placeholder="Ex: 20"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#F5F6F8] text-sm text-[#181C25]"
+                  />
+                </div>
+              )}
+
               <button
                 type="submit"
                 disabled={submitting}
