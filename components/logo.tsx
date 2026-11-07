@@ -1,18 +1,15 @@
 import React from 'react'
 
-export function Logo({ className = "h-6" }: { className?: string }) {
+export function Logo({ className = "h-7" }: { className?: string }) {
   return (
-    <div className={`flex items-baseline gap-1 select-none font-black ${className}`}>
-      {/* Texto DORSAL em formato SVG para manter a fonte FURORE com cantos geométricos idêntica à imagem */}
-      <svg
-        viewBox="0 0 178 28"
-        className="h-full fill-current"
-        xmlns="http://www.w3.org/2000/svg"
+    <div className={`flex items-baseline gap-1 select-none tracking-tight ${className}`}>
+      <span 
+        className="font-black text-2xl uppercase tracking-[0.08em] text-[#181C25]" 
+        style={{ fontFamily: "'Arial Black', 'Impact', sans-serif" }}
       >
-        <path d="M0 26.68V0.92H15.64C20.48 0.92 24.32 2.12 27.16 4.52C30 6.92 31.42 10.12 31.42 14.12C31.42 18.12 29.98 21.16 27.1 23.24C24.22 25.32 20.3 26.36 15.34 26.68H0ZM11.16 20.24H14.12C16.8 20.24 18.72 19.68 19.88 18.56C21.04 17.44 21.62 15.96 21.62 14.12C21.62 12.28 21.04 10.8 19.88 9.68C18.72 8.56 16.8 8 14.12 8H11.16V20.24ZM36 26.68V0.92H64.44V7.48H47.16V20.24H64.44V26.68H36ZM70.4 26.68V0.92H88.44C91.68 0.92 94.32 1.48 96.36 2.6C98.4 3.72 99.8 5.24 100.56 7.16C101.32 9.08 101.44 11.24 100.92 13.64L97.28 26.68H86.2L89.44 15.08C89.6 14.44 89.62 13.84 89.5 13.28C89.38 12.72 89.02 12.28 88.42 11.96C87.82 11.64 86.88 11.48 85.6 11.48H81.56V26.68H70.4ZM106.68 26.68V20.24L127.28 14.12C129.36 13.48 130.66 12.74 131.18 11.9C131.7 11.06 131.72 10.04 131.24 8.84C130.76 7.64 129.56 7.04 127.64 7.04C125.72 7.04 124.52 7.64 124.04 8.84C123.56 10.04 123.58 11.06 124.1 11.9C124.62 12.74 125.92 13.48 128 14.12L135.56 16.52C138.84 17.56 141.24 19.34 142.76 21.86C144.28 24.38 144.36 27.24 143 30.44C141.64 33.64 139 35.88 135.08 37.16C131.16 38.44 126.92 38.44 122.36 37.16C117.8 35.88 114.76 33.64 113.24 30.44C111.72 27.24 111.74 24.38 113.3 21.86C114.86 19.34 118 17.56 122.72 16.52L116.68 26.68H106.68ZM149 26.68V0.92H161V20.24H178V26.68H149Z" />
-      </svg>
-      {/* Ponto Quadrado Grande e Verde Menta no final */}
-      <span className="w-4.5 h-4.5 bg-[#71FC8F] inline-block rounded-[3px] transform translate-y-[2px]" />
+        DORSAL
+      </span>
+      <span className="w-2.5 h-2.5 bg-[#71FC8F] inline-block rounded-[1px] transform translate-y-[-1px]" />
     </div>
   )
 }
