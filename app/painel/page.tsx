@@ -18,7 +18,6 @@ import {
   Check,
   Search,
   Filter,
-  AlertTriangle
 } from 'lucide-react'
 
 interface Transaction {
