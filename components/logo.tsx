@@ -5,7 +5,7 @@ export function Logo({ className = "h-7" }: { className?: string }) {
     <div className={`flex items-baseline gap-1 select-none tracking-tight ${className}`}>
       <span 
         className="font-black text-2xl uppercase tracking-[0.08em] text-[#181C25]" 
-        style={{ fontFamily: "'Arial Black', 'Impact', sans-serif" }}
+        style={{ fontFamily: "'Furore', sans-serif" }}
       >
         DORSAL
       </span>
