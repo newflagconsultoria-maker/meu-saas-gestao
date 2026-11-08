@@ -486,7 +486,7 @@ export default function PainelKeelPage() {
 
           <div className="flex items-center gap-2 flex-wrap">
             {/* Navegação de Abas com Fundo Deslizante */}
-            <nav className="flex items-center gap-1 bg-[#EAECEF] p-1.5 rounded-2xl relative">
+            <nav className="flex items-center gap-1 bg-[#EAECEF] p-1 rounded-xl h-9">
               {[
                 { id: 'overview', label: 'Overview' },
                 { id: 'customers', label: 'Clientes' },
@@ -498,18 +498,18 @@ export default function PainelKeelPage() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
-                    className={`relative px-4 py-2 rounded-xl text-xs font-semibold transition-colors duration-200 z-10 ${
-                      isActive ? 'text-white' : 'text-[#181C25] hover:text-black'
+                    className={`relative h-7 px-3.5 flex items-center justify-center rounded-lg text-xs font-medium transition-colors duration-200 select-none ${
+                      isActive ? 'text-white' : 'text-[#6B6F78] hover:text-[#181C25]'
                     }`}
                   >
                     {isActive && (
                       <motion.div
                         layoutId="activeTabPill"
-                        className="absolute inset-0 bg-[#181C25] rounded-xl shadow-sm -z-10"
-                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                        className="absolute inset-0 bg-[#181C25] rounded-lg shadow-sm"
+                        transition={{ type: 'spring', stiffness: 450, damping: 35 }}
                       />
                     )}
-                    {tab.label}
+                    <span className="relative z-10 whitespace-nowrap">{tab.label}</span>
                   </button>
                 )
               })}
