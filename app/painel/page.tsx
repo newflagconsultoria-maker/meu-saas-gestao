@@ -1,5 +1,6 @@
 'use client'
 
+import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
@@ -484,25 +485,34 @@ export default function PainelKeelPage() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <nav className="flex items-center gap-1.5 bg-[#EAECEF] p-1.5 rounded-2xl">
+            {/* Navegação de Abas com Fundo Deslizante */}
+            <nav className="flex items-center gap-1 bg-[#EAECEF] p-1.5 rounded-2xl relative">
               {[
                 { id: 'overview', label: 'Overview' },
                 { id: 'customers', label: 'Clientes' },
                 { id: 'transactions', label: 'Transações' },
                 { id: 'catalog', label: 'Catálogo' },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-                    activeTab === tab.id
-                      ? 'bg-[#181C25] text-white shadow-sm'
-                      : 'text-[#181C25] hover:bg-white/70'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+              ].map((tab) => {
+                const isActive = activeTab === tab.id
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`relative px-4 py-2 rounded-xl text-xs font-semibold transition-colors duration-200 z-10 ${
+                      isActive ? 'text-white' : 'text-[#181C25] hover:text-black'
+                    }`}
+                  >
+                    {isActive && (
+                      <motion.div
+                        layoutId="activeTabPill"
+                        className="absolute inset-0 bg-[#181C25] rounded-xl shadow-sm -z-10"
+                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                      />
+                    )}
+                    {tab.label}
+                  </button>
+                )
+              })}
             </nav>
 
             <button
@@ -530,26 +540,34 @@ export default function PainelKeelPage() {
             <span>Período do Caixa:</span>
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-1.5 bg-white p-1 rounded-2xl border border-black/5 shadow-sm">
+          {/* Filtros de Data com Fundo Deslizante */}
+            <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-black/5 shadow-sm relative">
               {[
                 { id: 'today', label: 'Hoje' },
                 { id: '7days', label: 'Últimos 7 dias' },
                 { id: 'month', label: 'Este Mês' },
                 { id: 'all', label: 'Histórico Total' },
-              ].map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => setTimeFilter(f.id as any)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                    timeFilter === f.id
-                      ? 'bg-[#181C25] text-[#71FC8F]'
-                      : 'text-[#6B6F78] hover:text-[#181C25]'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
+              ].map((f) => {
+                const isSelected = timeFilter === f.id
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => setTimeFilter(f.id as any)}
+                    className={`relative px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors duration-200 z-10 ${
+                      isSelected ? 'text-[#71FC8F]' : 'text-[#6B6F78] hover:text-[#181C25]'
+                    }`}
+                  >
+                    {isSelected && (
+                      <motion.div
+                        layoutId="activeFilterPill"
+                        className="absolute inset-0 bg-[#181C25] rounded-xl shadow-sm -z-10"
+                        transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                      />
+                    )}
+                    {f.label}
+                  </button>
+                )
+              })}
             </div>
 
             <button
@@ -1035,7 +1053,6 @@ export default function PainelKeelPage() {
           </div>
         )}
 
-      </div>
 
       {/* MODAL FECHO DE CAIXA */}
       {showCashCloseModal && (
