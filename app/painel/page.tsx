@@ -1,25 +1,28 @@
 'use client'
 
-import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { Logo } from '@/components/logo'
-import { 
-  Bell, 
-  Plus, 
-  ArrowUpRight, 
-  X, 
-  Phone, 
-  Trash2, 
-  Edit3, 
+import {
+  Bell,
+  Plus,
+  ArrowUpRight,
+  X,
+  Phone,
+  Trash2,
+  Edit3,
   LogOut,
-  Calendar,
   Wallet,
   Copy,
   Check,
   Search,
   Filter,
+  CheckCircle2,
+  Clock,
+  Calendar,
+  Link2,
+  ArrowDownCircle,
 } from 'lucide-react'
 
 interface Transaction {
@@ -76,14 +79,15 @@ export default function PainelKeelPage() {
   const [txSearch, setTxSearch] = useState('')
   const [txMethodFilter, setTxMethodFilter] = useState<'all' | 'pix' | 'cash' | 'credit_card' | 'debit_card'>('all')
 
-  // Modais
+  // Modais e Popovers
   const [showAlerts, setShowAlerts] = useState(false)
+  const [alertResolved, setAlertResolved] = useState(false)
   const [showNewTxModal, setShowNewTxModal] = useState(false)
   const [showNewCustomerModal, setShowNewCustomerModal] = useState(false)
   const [showNewCatalogModal, setShowNewCatalogModal] = useState(false)
   const [showCashCloseModal, setShowCashCloseModal] = useState(false)
   const [copiedSummary, setCopiedSummary] = useState(false)
-  
+
   // Edição
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [editingCatalogItem, setEditingCatalogItem] = useState<CatalogItem | null>(null)
@@ -114,7 +118,9 @@ export default function PainelKeelPage() {
 
   useEffect(() => {
     async function loadAll() {
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (!user) {
         router.push('/login')
         return
@@ -131,7 +137,7 @@ export default function PainelKeelPage() {
       const [txRes, custRes, catRes] = await Promise.all([
         supabase.from('transactions').select('*').order('occurred_at', { ascending: false }).limit(200),
         supabase.from('customers').select('*').order('created_at', { ascending: false }),
-        supabase.from('catalog_items').select('*').order('created_at', { ascending: false })
+        supabase.from('catalog_items').select('*').order('created_at', { ascending: false }),
       ])
 
       if (txRes.data) setTransactions(txRes.data)
@@ -192,18 +198,16 @@ export default function PainelKeelPage() {
       return txDate >= sevenDaysAgo
     }
     if (timeFilter === 'month') {
-      return (
-        txDate.getMonth() === now.getMonth() &&
-        txDate.getFullYear() === now.getFullYear()
-      )
+      return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear()
     }
     return true
   })
 
   // Transações com filtro de busca e método de pagamento (Aba Transações)
   const tabTransactions = filteredTransactions.filter((t) => {
-    const matchesSearch = t.description.toLowerCase().includes(txSearch.toLowerCase()) ||
-                          t.category.toLowerCase().includes(txSearch.toLowerCase())
+    const matchesSearch =
+      t.description.toLowerCase().includes(txSearch.toLowerCase()) ||
+      t.category.toLowerCase().includes(txSearch.toLowerCase())
     const matchesMethod = txMethodFilter === 'all' || t.payment_method === txMethodFilter
     return matchesSearch && matchesMethod
   })
@@ -225,10 +229,18 @@ export default function PainelKeelPage() {
   const todayTotalExpenses = todayExpenses.reduce((acc, t) => acc + Number(t.total_amount), 0)
   const todayNetProfit = todayTransactions.reduce((acc, t) => acc + Number(t.net_profit), 0)
 
-  const cashInDrawer = todayIncomes.filter((t) => t.payment_method === 'cash').reduce((acc, t) => acc + Number(t.total_amount), 0)
-  const pixIncomes = todayIncomes.filter((t) => t.payment_method === 'pix').reduce((acc, t) => acc + Number(t.total_amount), 0)
-  const creditIncomes = todayIncomes.filter((t) => t.payment_method === 'credit_card').reduce((acc, t) => acc + Number(t.total_amount), 0)
-  const debitIncomes = todayIncomes.filter((t) => t.payment_method === 'debit_card').reduce((acc, t) => acc + Number(t.total_amount), 0)
+  const cashInDrawer = todayIncomes
+    .filter((t) => t.payment_method === 'cash')
+    .reduce((acc, t) => acc + Number(t.total_amount), 0)
+  const pixIncomes = todayIncomes
+    .filter((t) => t.payment_method === 'pix')
+    .reduce((acc, t) => acc + Number(t.total_amount), 0)
+  const creditIncomes = todayIncomes
+    .filter((t) => t.payment_method === 'credit_card')
+    .reduce((acc, t) => acc + Number(t.total_amount), 0)
+  const debitIncomes = todayIncomes
+    .filter((t) => t.payment_method === 'debit_card')
+    .reduce((acc, t) => acc + Number(t.total_amount), 0)
 
   // Métricas do Período
   const grossRevenue = filteredTransactions
@@ -241,16 +253,20 @@ export default function PainelKeelPage() {
 
   const netProfit = filteredTransactions.reduce((acc, t) => acc + Number(t.net_profit), 0)
   const profitMargin = grossRevenue > 0 ? Math.round((netProfit / grossRevenue) * 100) : 0
-  const cashRatio = totalExpenses > 0 ? (grossRevenue / totalExpenses).toFixed(1) : grossRevenue > 0 ? '10.0' : '0.0'
-  const ticketMedio = filteredTransactions.filter((t) => t.type === 'income').length > 0
-    ? grossRevenue / filteredTransactions.filter((t) => t.type === 'income').length
-    : 0
+  const cashRatio =
+    totalExpenses > 0 ? (grossRevenue / totalExpenses).toFixed(1) : grossRevenue > 0 ? '10.0' : '0.0'
+  const incomeCount = filteredTransactions.filter((t) => t.type === 'income').length
+  const ticketMedio = incomeCount > 0 ? grossRevenue / incomeCount : 0
 
-  const formattedProfit = Math.abs(netProfit).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const formattedProfit = Math.abs(netProfit).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
   const [wholePart, centsPart] = formattedProfit.split(',')
 
   function handleCopySummary() {
-    const text = `📊 *FECHO DE CAIXA - ${new Date().toLocaleDateString('pt-BR')}*\n` +
+    const text =
+      `📊 *FECHO DE CAIXA - ${new Date().toLocaleDateString('pt-BR')}*\n` +
       `🏢 ${profile?.organizations?.name || 'Comércio'}\n\n` +
       `💰 *Faturação Bruta:* R$ ${todayGrossRevenue.toFixed(2)}\n` +
       `🔻 *Despesas:* R$ ${todayTotalExpenses.toFixed(2)}\n` +
@@ -267,14 +283,13 @@ export default function PainelKeelPage() {
     setTimeout(() => setCopiedSummary(false), 2500)
   }
 
-  // Lançamento com baixa de stock automática
   async function handleCreateTransaction(e: React.FormEvent) {
     e.preventDefault()
     if (!profile?.organization_id) return
     setSubmitting(true)
 
     const amountNum = parseFloat(txAmount.replace(',', '.')) || 0
-    const costNum = txType === 'income' ? (parseFloat(txCost.replace(',', '.')) || 0) : 0
+    const costNum = txType === 'income' ? parseFloat(txCost.replace(',', '.')) || 0 : 0
 
     const { error } = await supabase.from('transactions').insert({
       organization_id: profile.organization_id,
@@ -288,15 +303,11 @@ export default function PainelKeelPage() {
     })
 
     if (!error) {
-      // Baixa no stock se o item for um produto e possuir quantidade registada
       if (selectedCatalogId && txType === 'income') {
         const item = catalog.find((c) => c.id === selectedCatalogId)
         if (item && item.type === 'product' && item.stock_qty !== null && item.stock_qty > 0) {
           const nextStock = item.stock_qty - 1
-          await supabase
-            .from('catalog_items')
-            .update({ stock_qty: nextStock })
-            .eq('id', item.id)
+          await supabase.from('catalog_items').update({ stock_qty: nextStock }).eq('id', item.id)
 
           setCatalog((prev) =>
             prev.map((c) => (c.id === item.id ? { ...c, stock_qty: nextStock } : c))
@@ -304,7 +315,6 @@ export default function PainelKeelPage() {
         }
       }
 
-      // Atualiza o acumulado de gastos do cliente
       if (selectedCustomerId && txType === 'income') {
         const cust = customers.find((c) => c.id === selectedCustomerId)
         if (cust) {
@@ -313,9 +323,13 @@ export default function PainelKeelPage() {
             .from('customers')
             .update({ total_spent: updatedSpent, last_visit: new Date().toISOString() })
             .eq('id', selectedCustomerId)
-          
+
           setCustomers((prev) =>
-            prev.map((c) => (c.id === selectedCustomerId ? { ...c, total_spent: updatedSpent, last_visit: new Date().toISOString() } : c))
+            prev.map((c) =>
+              c.id === selectedCustomerId
+                ? { ...c, total_spent: updatedSpent, last_visit: new Date().toISOString() }
+                : c
+            )
           )
         }
       }
@@ -334,7 +348,6 @@ export default function PainelKeelPage() {
     await supabase.from('transactions').delete().eq('id', id)
   }
 
-  // Ações de Cliente
   async function handleSaveCustomer(e: React.FormEvent) {
     e.preventDefault()
     if (!profile?.organization_id) return
@@ -348,7 +361,9 @@ export default function PainelKeelPage() {
 
       if (!error) {
         setCustomers((prev) =>
-          prev.map((c) => (c.id === editingCustomer.id ? { ...c, name: custName, phone: custPhone } : c))
+          prev.map((c) =>
+            c.id === editingCustomer.id ? { ...c, name: custName, phone: custPhone } : c
+          )
         )
         setEditingCustomer(null)
         setCustName('')
@@ -384,7 +399,6 @@ export default function PainelKeelPage() {
     }
   }
 
-  // Ações de Catálogo
   async function handleSaveCatalogItem(e: React.FormEvent) {
     e.preventDefault()
     if (!profile?.organization_id) return
@@ -410,7 +424,14 @@ export default function PainelKeelPage() {
         setCatalog((prev) =>
           prev.map((item) =>
             item.id === editingCatalogItem.id
-              ? { ...item, name: itemName, type: itemType, sale_price: salePriceNum, cost_price: costPriceNum, stock_qty: stockQtyNum }
+              ? {
+                  ...item,
+                  name: itemName,
+                  type: itemType,
+                  sale_price: salePriceNum,
+                  cost_price: costPriceNum,
+                  stock_qty: stockQtyNum,
+                }
               : item
           )
         )
@@ -460,307 +481,643 @@ export default function PainelKeelPage() {
     router.push('/login')
   }
 
-  const healthBars = Array.from({ length: 64 }, (_, i) => {
-    const base = Math.sin(i * 0.25) * 25 + 45 + ((i * 7) % 25)
-    return Math.min(95, Math.max(18, Math.round(base)))
-  })
+  // 68 barras verticais no padrão exato do Financial Health Score do Keel
+  const healthBars = [
+    28, 35, 42, 31, 48, 54, 44, 38, 29, 36, 49, 41, 33, 27, 38, 45, 52,
+    40, 32, 24, 29, 34, 28, 36, 41, 33, 25, 30, 37, 43, 39, 48, 56, 62,
+    58, 51, 46, 53, 60, 65, 59, 54, 61, 68, 63, 70, 74, 79, 85, 92, 83,
+    78, 86, 80, 75, 82, 88, 95, 89, 84, 79, 83, 87, 81, 77, 84, 88, 82,
+  ]
+
+  const periodLabel =
+    timeFilter === 'today'
+      ? 'Hoje'
+      : timeFilter === '7days'
+      ? 'Últimos 7 dias'
+      : timeFilter === 'month'
+      ? 'Este Mês'
+      : 'Histórico Total'
 
   return (
-    <div className="min-h-screen bg-[#ECEEF2] text-[#181C25] p-3 md:p-6 font-sans selection:bg-[#71FC8F] selection:text-[#181C25]">
-      <div className="max-w-[1400px] mx-auto bg-[#F5F6F8] rounded-[32px] border border-white/80 shadow-[0_20px_60px_rgba(24,28,37,0.08)] p-5 md:p-8 relative">
+    <div className="min-h-screen bg-[#E2E4E8] text-[#181C25] p-2 sm:p-5 md:p-7 font-sans selection:bg-[#71FC8F] selection:text-[#181C25]">
+      {/* CANVAS PRINCIPAL CINZA (#ECEDEF) - EXATAMENTE COMO NO KEEL */}
+      <div className="max-w-[1440px] mx-auto bg-[#ECEDEF] rounded-[36px] border border-white/60 shadow-[0_30px_90px_rgba(24,28,37,0.10)] px-5 sm:px-8 md:px-10 py-6 md:py-8 relative">
         
-        {/* NAVEGAÇÃO SUPERIOR */}
-        <header className="flex flex-wrap items-center justify-between gap-4 mb-8">
-          <div className="flex items-center gap-5">
+        {/* HEADER SUPERIOR: LOGO + FILTROS + BALÕES DE NAVEGAÇÃO FLUTUANTES */}
+        <header className="flex flex-wrap items-center justify-between gap-4 mb-8 relative z-30">
+          {/* Esquerda: Logo + Workspace Ativo */}
+          <div className="flex items-center gap-4">
             <Logo className="h-7 text-[#181C25]" />
-            <div className="h-7 w-px bg-black/10 hidden md:block" />
+            <div className="h-5 w-px bg-black/10 hidden sm:block" />
             <div>
-              <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#6B6F78] block">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#6B6F78] block">
                 Workspace Ativo
               </span>
-              <h2 className="text-sm font-bold text-[#181C25]">
-                {profile?.organizations?.name || 'A carregar empresa...'}
-              </h2>
+              <span className="text-xs font-extrabold text-[#181C25]">
+                {profile?.organizations?.name || 'mn02'}
+              </span>
             </div>
           </div>
 
+          {/* Centro: Filtro de Período em Pílulas Flutuantes + Fecho de Caixa */}
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Navegação de Abas com Fundo Deslizante */}
-            <nav className="flex items-center gap-1 bg-[#EAECEF] p-1 rounded-xl h-9">
-              {[
-                { id: 'overview', label: 'Overview' },
-                { id: 'customers', label: 'Clientes' },
-                { id: 'transactions', label: 'Transações' },
-                { id: 'catalog', label: 'Catálogo' },
-              ].map((tab) => {
-                const isActive = activeTab === tab.id
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
-                    className={`relative h-7 px-3.5 flex items-center justify-center rounded-lg text-xs font-medium transition-colors duration-200 select-none ${
-                      isActive ? 'text-white' : 'text-[#6B6F78] hover:text-[#181C25]'
-                    }`}
-                  >
-                    {isActive && (
-                      <motion.div
-                        layoutId="activeTabPill"
-                        className="absolute inset-0 bg-[#181C25] rounded-lg shadow-sm"
-                        transition={{ type: 'spring', stiffness: 450, damping: 35 }}
-                      />
-                    )}
-                    <span className="relative z-10 whitespace-nowrap">{tab.label}</span>
-                  </button>
-                )
-              })}
-            </nav>
+            {[
+              { id: 'today', label: 'Hoje' },
+              { id: '7days', label: '7 dias' },
+              { id: 'month', label: 'Este Mês' },
+              { id: 'all', label: 'Total' },
+            ].map((f) => {
+              const isSelected = timeFilter === f.id
+              return (
+                <button
+                  key={f.id}
+                  onClick={() => setTimeFilter(f.id as any)}
+                  className={`h-9 px-3.5 rounded-full text-xs font-semibold transition-all ${
+                    isSelected
+                      ? 'bg-[#181C25] text-[#71FC8F] shadow-[0_6px_16px_rgba(24,28,37,0.16)]'
+                      : 'bg-white text-[#6B6F78] hover:text-[#181C25] shadow-[0_2px_8px_rgba(24,28,37,0.04)]'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              )
+            })}
 
             <button
-              onClick={() => setShowAlerts(!showAlerts)}
-              className="w-10 h-10 rounded-2xl bg-white border border-black/5 flex items-center justify-center text-[#181C25] hover:bg-black/5 transition relative"
+              onClick={() => setShowCashCloseModal(true)}
+              className="h-9 px-4 rounded-full bg-white text-[#181C25] text-xs font-semibold flex items-center gap-2 shadow-[0_2px_8px_rgba(24,28,37,0.04)] hover:shadow-md transition"
             >
-              <Bell className="w-4 h-4" />
-              <span className="w-2 h-2 rounded-full bg-[#FF5A36] absolute top-2.5 right-2.5" />
+              <Wallet className="w-3.5 h-3.5 text-[#181C25]" />
+              Fecho de Caixa
             </button>
+          </div>
 
+          {/* Direita: Abas como Balões Individuais Flutuantes + Sino Alerts + Sair */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {[
+              { id: 'overview', label: 'Overview' },
+              { id: 'customers', label: 'Clientes' },
+              { id: 'transactions', label: 'Transações' },
+              { id: 'catalog', label: 'Catálogo' },
+            ].map((tab) => {
+              const isActive = activeTab === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`h-10 px-5 rounded-full text-[13px] font-semibold transition-all ${
+                    isActive
+                      ? 'bg-[#181C25] text-white shadow-[0_6px_16px_rgba(24,28,37,0.18)]'
+                      : 'bg-white text-[#181C25] hover:bg-white/80 shadow-[0_2px_8px_rgba(24,28,37,0.04)]'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              )
+            })}
+
+            {/* Sino de Alertas com Popover Keel ("Four tell you. One asks you.") */}
+            <div className="relative ml-1">
+              <button
+                onClick={() => setShowAlerts(!showAlerts)}
+                className="w-10 h-10 rounded-full bg-white shadow-[0_2px_8px_rgba(24,28,37,0.04)] flex items-center justify-center text-[#181C25] hover:shadow-md transition relative"
+                title="Alertas"
+              >
+                <Bell className="w-4 h-4" />
+                {!alertResolved && (
+                  <span className="w-2 h-2 rounded-full bg-[#FF4D4F] absolute top-2.5 right-2.5 ring-2 ring-white" />
+                )}
+              </button>
+
+              {showAlerts && (
+                <div className="absolute right-0 top-12 w-[340px] sm:w-[370px] bg-white rounded-[26px] shadow-[0_24px_60px_rgba(24,28,37,0.18)] border border-black/5 p-5 z-50">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-[15px] font-bold text-[#181C25]">Alerts</span>
+                    <div className="flex items-center gap-1 bg-[#F4F5F7] p-1 rounded-full text-[11px] font-semibold">
+                      <span className="px-2.5 py-0.5 rounded-full bg-white text-[#181C25] shadow-sm">
+                        All
+                      </span>
+                      <span className="px-2.5 py-0.5 text-[#6B6F78]">Unread</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5 text-xs">
+                    <div className="flex items-start justify-between p-2.5 rounded-xl hover:bg-[#F8F9FA] transition">
+                      <div className="flex items-start gap-2.5">
+                        <ArrowDownCircle className="w-4 h-4 text-[#181C25] mt-0.5 shrink-0" />
+                        <div>
+                          <div className="font-semibold text-[#181C25]">Meta diária projetada</div>
+                          <div className="text-[#6B6F78] text-[11px]">
+                            {todayIncomes.length} atendimentos registados hoje
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px] text-[#6B6F78]">
+                        <span>2h</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#FF4D4F]" />
+                      </div>
+                    </div>
+
+                    {!alertResolved ? (
+                      <div className="p-3.5 rounded-2xl bg-[#F6F7F9] border border-black/5">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-2.5">
+                            <CheckCircle2 className="w-4 h-4 text-[#181C25] mt-0.5 shrink-0" />
+                            <div>
+                              <div className="font-bold text-[#181C25]">Conferência pendente</div>
+                              <div className="text-[#6B6F78] text-[11px]">
+                                Validar saldo de R$ {todayNetProfit.toFixed(2)} no caixa
+                              </div>
+                            </div>
+                          </div>
+                          <span className="text-[11px] text-[#6B6F78]">Agora</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-3 pl-6">
+                          <button
+                            onClick={() => setAlertResolved(true)}
+                            className="px-3.5 py-1.5 rounded-full bg-white border border-black/10 text-[#181C25] font-semibold text-[11px] hover:bg-black/5 transition"
+                          >
+                            Decline
+                          </button>
+                          <button
+                            onClick={() => {
+                              setAlertResolved(true)
+                              setShowAlerts(false)
+                              setShowCashCloseModal(true)
+                            }}
+                            className="px-4 py-1.5 rounded-full bg-[#181C25] text-white font-semibold text-[11px] hover:opacity-90 transition"
+                          >
+                            Accept
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-3 rounded-2xl bg-[#71FC8F]/20 text-[#181C25] text-[11px] font-semibold flex items-center gap-2">
+                        <Check className="w-4 h-4" /> Conferência validada com sucesso.
+                      </div>
+                    )}
+
+                    <div className="flex items-start justify-between p-2.5 rounded-xl hover:bg-[#F8F9FA] transition">
+                      <div className="flex items-start gap-2.5">
+                        <Clock className="w-4 h-4 text-[#181C25] mt-0.5 shrink-0" />
+                        <div>
+                          <div className="font-semibold text-[#181C25]">
+                            {customers.length} clientes na base ativa
+                          </div>
+                          <div className="text-[#6B6F78] text-[11px]">
+                            CRM sincronizado com o caixa
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-[11px] text-[#6B6F78]">5h</span>
+                    </div>
+
+                    <div className="flex items-start justify-between p-2.5 rounded-xl hover:bg-[#F8F9FA] transition">
+                      <div className="flex items-start gap-2.5">
+                        <Calendar className="w-4 h-4 text-[#181C25] mt-0.5 shrink-0" />
+                        <div>
+                          <div className="font-semibold text-[#181C25]">Catálogo atualizado</div>
+                          <div className="text-[#6B6F78] text-[11px]">
+                            {catalog.length} itens configurados no workspace
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start justify-between p-2.5 rounded-xl hover:bg-[#F8F9FA] transition">
+                      <div className="flex items-start gap-2.5">
+                        <Link2 className="w-4 h-4 text-[#181C25] mt-0.5 shrink-0" />
+                        <div>
+                          <div className="font-semibold text-[#181C25]">Supabase Realtime ativo</div>
+                          <div className="text-[#6B6F78] text-[11px]">
+                             Workspace {profile?.organizations?.name || 'mn02'} • conectado
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Botão Sair Flutuante */}
             <button
               onClick={handleSignOut}
-              title="Terminar sessão"
-              className="w-10 h-10 rounded-2xl bg-white border border-black/5 flex items-center justify-center text-[#6B6F78] hover:text-rose-600 hover:bg-rose-50 transition"
+              className="w-10 h-10 rounded-full bg-white shadow-[0_2px_8px_rgba(24,28,37,0.04)] flex items-center justify-center text-[#6B6F78] hover:text-rose-600 transition"
+              title="Sair da conta"
             >
               <LogOut className="w-4 h-4" />
             </button>
           </div>
         </header>
 
-        {/* BARRA DE FILTRO DE DATA + BOTÃO FECHO DE CAIXA */}
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-black/5 flex-wrap gap-3">
-          <div className="flex items-center gap-2 text-xs font-semibold text-[#6B6F78]">
-            <Calendar className="w-4 h-4" />
-            <span>Período do Caixa:</span>
-          </div>
-
-          {/* Filtros de Data com Fundo Deslizante */}
-            <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-black/5 shadow-sm relative">
-              {[
-                { id: 'today', label: 'Hoje' },
-                { id: '7days', label: 'Últimos 7 dias' },
-                { id: 'month', label: 'Este Mês' },
-                { id: 'all', label: 'Histórico Total' },
-              ].map((f) => {
-                const isSelected = timeFilter === f.id
-                return (
-                  <button
-                    key={f.id}
-                    onClick={() => setTimeFilter(f.id as any)}
-                    className={`relative px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors duration-200 z-10 ${
-                      isSelected ? 'text-[#71FC8F]' : 'text-[#6B6F78] hover:text-[#181C25]'
-                    }`}
-                  >
-                    {isSelected && (
-                      <motion.div
-                        layoutId="activeFilterPill"
-                        className="absolute inset-0 bg-[#181C25] rounded-xl shadow-sm -z-10"
-                        transition={{ type: 'spring', stiffness: 400, damping: 32 }}
-                      />
-                    )}
-                    {f.label}
-                  </button>
-                )
-              })}
-            </div>
-
-            <button
-              onClick={() => setShowCashCloseModal(true)}
-              className="px-4 py-2 rounded-2xl bg-white border border-black/10 text-xs font-bold text-[#181C25] flex items-center gap-2 hover:bg-[#181C25] hover:text-white transition-all shadow-sm"
-            >
-              <Wallet className="w-4 h-4 text-[#71FC8F]" />
-              Fecho de Caixa
-            </button>
-          </div>
-        </div>
-
-        {/* ABA 1: OVERVIEW */}
+        {/* ========================================================= */}
+        {/* ABA 1: OVERVIEW (CLONE FIEL 1:1 DO HERO SCREEN DO KEEL)   */}
+        {/* ========================================================= */}
         {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-            <div className="lg:col-span-7 space-y-5">
-              <div className="bg-gradient-to-br from-white via-white to-[#71FC8F]/20 rounded-[28px] p-6 md:p-8 border border-white shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
-                  <span className="text-sm font-medium text-[#6B6F78]">
-                    Lucro Líquido Real ({timeFilter === 'today' ? 'Hoje' : timeFilter === '7days' ? '7 Dias' : timeFilter === 'month' ? 'Este Mês' : 'Total'})
-                  </span>
-                  <button
-                    onClick={() => setShowNewTxModal(true)}
-                    className="px-4 py-2.5 rounded-2xl bg-[#181C25] text-white text-xs font-semibold flex items-center gap-2 hover:bg-[#181C25]/90 transition shadow-sm"
-                  >
-                    <Plus className="w-4 h-4 text-[#71FC8F]" />
-                    + Lançar no Caixa
-                  </button>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+            
+            {/* COLUNA ESQUERDA (7 COLUNAS) */}
+            <div className="lg:col-span-7 flex flex-col justify-between gap-4">
+              
+              {/* HERO SECTION DIRETO NO FUNDO CINZA (#ECEDEF) - SEM CARD BRANCO AO REDOR */}
+              <div className="pt-1 flex flex-col justify-between">
+                <div>
+                  <div className="text-[15px] font-medium text-[#6B6F78] mb-1 tracking-tight">
+                    Lucro Líquido Real ({periodLabel})
+                  </div>
+
+                  {/* Número Gigante + Botão Escuro Flutuante */}
+                  <div className="flex flex-wrap items-baseline justify-between gap-4 my-1">
+                    <div className="text-[52px] sm:text-[68px] xl:text-[76px] font-bold tracking-[-0.04em] leading-none text-[#181C25] select-none">
+                      {netProfit < 0 && '-'}R$ {wholePart}
+                      <span className="text-[#9CA0A8] font-medium">,{centsPart}</span>
+                    </div>
+
+                    <button
+                      onClick={() => setShowNewTxModal(true)}
+                      className="h-11 px-5 rounded-full bg-[#181C25] text-white text-xs font-semibold flex items-center gap-2 shadow-[0_10px_24px_rgba(24,28,37,0.22)] hover:scale-[1.02] active:scale-[0.99] transition cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-[#71FC8F]" />
+                      <span>Lançar no Caixa</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight text-[#181C25] my-4">
-                  {netProfit < 0 && '-'}R$ {wholePart}
-                  <span className="text-[#6B6F78] font-medium">,{centsPart}</span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-8">
-                  <div className="bg-white/90 backdrop-blur rounded-2xl p-4 border border-black/5">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xl font-bold text-[#181C25]">{filteredTransactions.length}</span>
+                {/* 4 MINI-CARDS BRANCOS INDEPENDENTES FLUTUANDO SOBRE O FUNDO CINZA */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+                  {/* Mini-Card 1 */}
+                  <div className="bg-white rounded-[22px] p-4 shadow-[0_2px_10px_rgba(24,28,37,0.03)] flex flex-col justify-between min-h-[92px]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[22px] font-bold tracking-tight text-[#181C25]">
+                        {filteredTransactions.length}
+                      </span>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#71FC8F] text-[#181C25]">
                         Ativo
                       </span>
                     </div>
-                    <span className="text-[11px] text-[#6B6F78] block">Lançamentos</span>
+                    <span className="text-[11px] font-medium text-[#8C919C]">Lançamentos</span>
                   </div>
 
-                  <div className="bg-white/90 backdrop-blur rounded-2xl p-4 border border-black/5">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xl font-bold text-[#181C25]">
-                        R$ {grossRevenue >= 1000 ? `${(grossRevenue / 1000).toFixed(1)}k` : grossRevenue.toFixed(0)}
+                  {/* Mini-Card 2 */}
+                  <div className="bg-white rounded-[22px] p-4 shadow-[0_2px_10px_rgba(24,28,37,0.03)] flex flex-col justify-between min-h-[92px]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[22px] font-bold tracking-tight text-[#181C25]">
+                        R${' '}
+                        {grossRevenue >= 1000
+                          ? `${(grossRevenue / 1000).toFixed(1)}k`
+                          : grossRevenue.toFixed(0)}
                       </span>
                     </div>
-                    <span className="text-[11px] text-[#6B6F78] block">Faturação Bruta</span>
+                    <span className="text-[11px] font-medium text-[#8C919C]">Faturação Bruta</span>
                   </div>
 
-                  <div className="bg-white/90 backdrop-blur rounded-2xl p-4 border border-black/5">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xl font-bold text-[#181C25]">{customers.length}</span>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-600">
+                  {/* Mini-Card 3 */}
+                  <div className="bg-white rounded-[22px] p-4 shadow-[0_2px_10px_rgba(24,28,37,0.03)] flex flex-col justify-between min-h-[92px]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[22px] font-bold tracking-tight text-[#181C25]">
+                        {customers.length}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FDE8E8] text-[#E5484D]">
                         CRM
                       </span>
                     </div>
-                    <span className="text-[11px] text-[#6B6F78] block">Clientes Ativos</span>
+                    <span className="text-[11px] font-medium text-[#8C919C]">Clientes Ativos</span>
                   </div>
 
-                  <div className="bg-white/90 backdrop-blur rounded-2xl p-4 border border-black/5">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xl font-bold text-[#181C25]">{cashRatio}x</span>
+                  {/* Mini-Card 4 */}
+                  <div className="bg-white rounded-[22px] p-4 shadow-[0_2px_10px_rgba(24,28,37,0.03)] flex flex-col justify-between min-h-[92px]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[22px] font-bold tracking-tight text-[#181C25]">
+                        {cashRatio}x
+                      </span>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#71FC8F] text-[#181C25]">
                         ↑ OK
                       </span>
                     </div>
-                    <span className="text-[11px] text-[#6B6F78] block">Razão de Caixa</span>
+                    <span className="text-[11px] font-medium text-[#8C919C]">Razão de Caixa</span>
                   </div>
                 </div>
               </div>
 
-              {/* Health Score */}
-              <div className="bg-white rounded-[28px] p-6 md:p-7 border border-black/5 shadow-sm">
-                <div className="flex items-center justify-between mb-1">
-                  <h3 className="text-base font-bold text-[#181C25]">Financial health score</h3>
-                  <span className="px-3 py-1 rounded-full bg-[#F5F6F8] text-[11px] font-semibold text-[#6B6F78]">
+              {/* CARD INFERIOR ESQUERDO: FINANCIAL HEALTH SCORE IDÊNTICO AO KEEL */}
+              <div className="bg-white rounded-[28px] p-6 md:p-7 shadow-[0_2px_12px_rgba(24,28,37,0.03)] flex flex-col justify-between">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-[15px] font-bold text-[#181C25]">Financial health score</h3>
+                    <p className="text-[11px] text-[#8C919C] mt-0.5 leading-relaxed">
+                      Equilíbrio entre volume de entradas e custos operacionais no período
+                    </p>
+                  </div>
+                  <span className="px-3 py-1 rounded-full bg-[#F4F5F7] text-[11px] font-semibold text-[#6B6F78]">
                     Margem Líquida: {profitMargin}%
                   </span>
                 </div>
-                <p className="text-xs text-[#6B6F78] mb-6">
-                  Equilíbrio entre volume de entradas e custos operacionais
-                </p>
 
-                <div className="h-28 flex items-end gap-[3px]">
-                  {healthBars.map((height, idx) => (
-                    <div
-                      key={idx}
-                      style={{ height: `${height}%` }}
-                      className={`flex-1 rounded-t-full transition-all duration-500 ${
-                        idx >= 38 ? 'bg-[#71FC8F]' : 'bg-[#D5D9E0]'
-                      }`}
-                    />
-                  ))}
+                {/* Área do Gráfico com os 5 Callouts Flutuantes + Barras Verticais */}
+                <div className="relative pt-14 pb-2 mt-2">
+                  {/* Callout 11% */}
+                  <div className="absolute left-[10%] top-4 -translate-x-1/2 flex flex-col items-center z-10">
+                    <div className="bg-white shadow-[0_4px_14px_rgba(0,0,0,0.06)] border border-black/5 rounded-xl px-2.5 py-1 text-center">
+                      <div className="text-[11px] font-bold text-[#181C25]">11%</div>
+                      <div className="text-[9px] text-[#8C919C]">Critical</div>
+                    </div>
+                    <div className="w-px h-6 bg-[#CBD0D8]" />
+                  </div>
+
+                  {/* Callout 37% */}
+                  <div className="absolute left-[28%] top-6 -translate-x-1/2 flex flex-col items-center z-10">
+                    <div className="bg-white shadow-[0_4px_14px_rgba(0,0,0,0.06)] border border-black/5 rounded-xl px-2.5 py-1 text-center">
+                      <div className="text-[11px] font-bold text-[#181C25]">37%</div>
+                      <div className="text-[9px] text-[#8C919C]">Fragile</div>
+                    </div>
+                    <div className="w-px h-6 bg-[#CBD0D8]" />
+                  </div>
+
+                  {/* Callout 56% */}
+                  <div className="absolute left-[48%] top-4 -translate-x-1/2 flex flex-col items-center z-10">
+                    <div className="bg-white shadow-[0_4px_14px_rgba(0,0,0,0.06)] border border-black/5 rounded-xl px-2.5 py-1 text-center">
+                      <div className="text-[11px] font-bold text-[#181C25]">56%</div>
+                      <div className="text-[9px] text-[#8C919C]">Stable</div>
+                    </div>
+                    <div className="w-px h-6 bg-[#CBD0D8]" />
+                  </div>
+
+                  {/* Callout 77% */}
+                  <div className="absolute left-[71%] top-0 -translate-x-1/2 flex flex-col items-center z-10">
+                    <div className="bg-white shadow-[0_4px_14px_rgba(0,0,0,0.06)] border border-black/5 rounded-xl px-2.5 py-1 text-center">
+                      <div className="text-[11px] font-bold text-[#181C25]">77%</div>
+                      <div className="text-[9px] text-[#8C919C]">Strong</div>
+                    </div>
+                    <div className="w-px h-8 bg-[#71FC8F]" />
+                  </div>
+
+                  {/* Callout Atual (Margem Real) */}
+                  <div className="absolute left-[88%] top-2 -translate-x-1/2 flex flex-col items-center z-10">
+                    <div className="bg-white shadow-[0_4px_14px_rgba(0,0,0,0.06)] border border-[#71FC8F] rounded-xl px-2.5 py-1 text-center">
+                      <div className="text-[11px] font-bold text-[#181C25]">{profitMargin}%</div>
+                      <div className="text-[9px] text-[#8C919C]">Excellent</div>
+                    </div>
+                    <div className="w-px h-6 bg-[#71FC8F]" />
+                  </div>
+
+                  {/* Barras Verticais Estilo Código de Barras */}
+                  <div className="h-28 flex items-end gap-[3px] pt-6">
+                    {healthBars.map((height, idx) => {
+                      const isGreenZone = idx >= 46
+                      return (
+                        <div
+                          key={idx}
+                          style={{ height: `${height}%` }}
+                          className={`flex-1 rounded-t-sm transition-all duration-500 ${
+                            isGreenZone
+                              ? 'bg-gradient-to-t from-[#71FC8F]/40 to-[#71FC8F]'
+                              : idx >= 22
+                              ? 'bg-[#C4C9D2]'
+                              : 'bg-[#DCdfe6]'
+                          }`}
+                        />
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Escala de Pílulas Inferior (0 a 100) */}
+                <div className="flex items-center justify-between gap-1 pt-3 border-t border-black/5">
+                  {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((num) => {
+                    const isHigh = num >= 80
+                    return (
+                      <span
+                        key={num}
+                        className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                          isHigh
+                            ? 'bg-[#71FC8F] text-[#181C25]'
+                            : 'bg-[#ECEDEF] text-[#6B6F78]'
+                        }`}
+                      >
+                        {num}
+                      </span>
+                    )
+                  })}
                 </div>
               </div>
             </div>
 
-            <div className="lg:col-span-5 space-y-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div className="bg-white rounded-[28px] p-6 border border-black/5 shadow-sm flex flex-col justify-between">
+            {/* COLUNA DIREITA (5 COLUNAS) */}
+            <div className="lg:col-span-5 flex flex-col justify-between gap-4">
+              
+              {/* 2 CARDS SUPERIORES DA DIREITA */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                
+                {/* Card Branco: Margem Líquida (3 Colunas + Pílula Verde) */}
+                <div className="bg-white rounded-[28px] p-6 shadow-[0_2px_12px_rgba(24,28,37,0.03)] flex flex-col justify-between min-h-[265px]">
                   <div>
-                    <p className="text-xs text-[#181C25] font-medium leading-relaxed mb-3">
+                    <p className="text-[11px] text-[#6B6F78] font-medium leading-snug mb-2">
                       Margem líquida da operação no período:
                     </p>
-                    <div className="text-4xl font-bold text-[#181C25]">{profitMargin}%</div>
-                    <span className="text-xs text-[#6B6F78]">Rentabilidade Real</span>
+                    <div className="text-[36px] font-bold tracking-tight text-[#181C25] leading-none">
+                      {profitMargin}%
+                    </div>
+                    <span className="text-[11px] text-[#8C919C] mt-1 block">
+                      Rentabilidade Real
+                    </span>
                   </div>
-                  <div className="h-24 flex items-end gap-2 my-4">
-                    <div className="flex-1 h-12 bg-[#F5F6F8] rounded-t-xl" />
-                    <div className="flex-1 h-8 bg-[#F5F6F8] rounded-t-xl" />
-                    <div className="flex-1 h-20 bg-gradient-to-b from-[#71FC8F]/80 to-[#71FC8F]/10 rounded-t-xl border-t-2 border-[#71FC8F]" />
-                    <div className="flex-1 h-6 bg-[#D8DCE3] rounded-t-xl" />
+
+                  {/* Gráfico de 3 Colunas idêntico ao Keel */}
+                  <div className="grid grid-cols-3 gap-2.5 items-end h-28 pt-4">
+                    <div className="h-12 rounded-t-xl bg-gradient-to-b from-[#EAECEF] to-transparent border-t-2 border-[#D0D4DC]" />
+                    <div className="h-24 rounded-t-xl bg-gradient-to-b from-[#71FC8F]/60 to-transparent relative flex justify-center">
+                      <span className=" -top-3 absolute px-2 py-0.5 rounded-full bg-[#71FC8F] text-[#181C25] text-[9px] font-extrabold shadow-sm">
+                        {profitMargin}%
+                      </span>
+                    </div>
+                    <div className="h-9 rounded-t-xl bg-gradient-to-b from-[#EAECEF] to-transparent border-t-2 border-[#6B6F78]" />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[10px] text-[#8C919C] pt-2">
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#71FC8F]" /> Confident
+                    </span>
+                    <span>Clear</span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#8C919C]" /> Reliable
+                    </span>
                   </div>
                 </div>
 
-                <div className="bg-[#181C25] text-white rounded-[28px] p-6 shadow-sm flex flex-col justify-between">
+                {/* Card Preto (#181C25): Despesas / Saídas com Arco Semicircular */}
+                <div className="bg-[#181C25] text-white rounded-[28px] p-6 shadow-[0_12px_30px_rgba(24,28,37,0.18)] flex flex-col justify-between min-h-[265px]">
                   <div>
-                    <span className="text-xs text-[#9CA3AF] block mb-1">Despesas / Saídas</span>
-                    <div className="text-3xl font-bold tracking-tight">
+                    <p className="text-[11px] text-[#9CA3AF] font-medium leading-snug mb-2">
+                      Despesas / Saídas registadas no período:
+                    </p>
+                    <div className="text-[34px] font-bold tracking-tight leading-none">
                       R$ {totalExpenses.toFixed(0)}
                     </div>
-                    <span className="text-xs text-[#9CA3AF] mt-1 block">
-                      Registos no período
+                    <span className="text-[11px] text-[#9CA3AF] mt-1 block">
+                      Saídas operacionais
                     </span>
                   </div>
-                  <div className="my-2 flex justify-center">
-                    <svg viewBox="0 0 200 100" className="w-full max-w-[160px]">
+
+                  {/* Arco Semicircular Bipartido Idêntico ao Keel */}
+                  <div className="my-1 flex justify-center">
+                    <svg viewBox="0 0 200 105" className="w-full max-w-[175px] overflow-visible">
+                      {/* Arco Esquerdo Cinza */}
                       <path
-                        d="M 15 90 A 75 75 0 0 1 185 90"
+                        d="M 16 95 A 82 82 0 0 1 88 15"
                         fill="none"
-                        stroke="#2A303C"
-                        strokeWidth="6"
+                        stroke="#8C919C"
+                        strokeWidth="4.5"
                         strokeLinecap="round"
                       />
+                      {/* Arco Direito Verde Neon */}
                       <path
-                        d="M 15 90 A 75 75 0 0 1 150 45"
+                        d="M 102 14 A 82 82 0 0 1 184 95"
                         fill="none"
                         stroke="#71FC8F"
-                        strokeWidth="6"
+                        strokeWidth="4.5"
                         strokeLinecap="round"
                       />
                     </svg>
                   </div>
+
+                  <div className="flex items-center justify-between text-[9px] text-[#9CA3AF] pt-1">
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#71FC8F]" /> Operacional
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#8C919C]" /> Insumos
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-white" /> Fixas
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-[28px] p-6 border border-black/5 shadow-sm">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#6B6F78]">
-                    Ticket Médio no Período
-                  </span>
-                  <button
-                    onClick={() => setActiveTab('transactions')}
-                    className="w-8 h-8 rounded-full border border-black/10 flex items-center justify-center text-[#181C25] hover:bg-[#181C25] hover:text-white transition"
-                  >
-                    <ArrowUpRight className="w-4 h-4" />
-                  </button>
+              {/* CARD INFERIOR DIREITO: TICKET MÉDIO COM FAIXA DIAGONAL HACHURADA DO KEEL */}
+              <div className="bg-white rounded-[28px] p-6 md:p-7 shadow-[0_2px_12px_rgba(24,28,37,0.03)] flex flex-col justify-between flex-1">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#6B6F78]">
+                      Ticket Médio no Período
+                    </span>
+                    <button
+                      onClick={() => setActiveTab('transactions')}
+                      className="w-7 h-7 rounded-full border border-black/10 flex items-center justify-center text-[#181C25] hover:bg-[#181C25] hover:text-white transition"
+                      title="Ver transações"
+                    >
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="text-[36px] font-bold tracking-tight text-[#181C25] leading-none my-1">
+                    R${' '}
+                    {ticketMedio.toLocaleString('pt-BR', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </div>
+                  <p className="text-[11px] text-[#8C919C]">
+                    Média de valor por venda realizada ({incomeCount} vendas)
+                  </p>
                 </div>
 
-                <div className="text-4xl font-bold text-[#181C25] mb-1">
-                  R$ {ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-                <p className="text-xs text-[#6B6F78] mb-4">
-                  Média de valor por venda realizada
-                </p>
+                {/* Gráfico de Faixa Hachurada Diagonal Idêntico ao card S&P 500 do Keel */}
+                <div className="relative h-28 my-2">
+                  <svg viewBox="0 0 400 110" className="w-full h-full overflow-visible">
+                    <defs>
+                      <pattern
+                        id="keelDiagonalHatch"
+                        width="6"
+                        height="6"
+                        patternTransform="rotate(45 0 0)"
+                        patternUnits="userSpaceOnUse"
+                      >
+                        <line
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="6"
+                          stroke="#D5D8E0"
+                          strokeWidth="1.5"
+                        />
+                      </pattern>
+                    </defs>
 
-                <div className="space-y-2 border-t border-black/5 pt-3">
-                  {filteredTransactions.slice(0, 3).map((t) => (
-                    <div key={t.id} className="flex items-center justify-between text-xs py-1">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${t.type === 'income' ? 'bg-[#71FC8F]' : 'bg-rose-500'}`} />
-                        <span className="font-semibold text-[#181C25] truncate max-w-[150px]">{t.description}</span>
-                      </div>
-                      <span className="font-bold text-[#181C25]">
-                        {t.type === 'income' ? '+' : '-'} R$ {Number(t.total_amount).toFixed(2)}
-                      </span>
-                    </div>
-                  ))}
+                    {/* Polígono preenchido com hachura diagonal */}
+                    <polygon
+                      points="15,78 95,68 180,55 265,38 355,22 385,15 385,55 355,62 265,68 180,75 95,84 15,88"
+                      fill="url(#keelDiagonalHatch)"
+                      opacity="0.85"
+                    />
+
+                    {/* Linhas de contorno suaves */}
+                    <polyline
+                      fill="none"
+                      stroke="#CBD0D8"
+                      strokeWidth="1"
+                      points="15,78 95,68 180,55 265,38 355,22 385,15"
+                    />
+                    <polyline
+                      fill="none"
+                      stroke="#CBD0D8"
+                      strokeWidth="1"
+                      points="15,88 95,84 180,75 265,68 355,62 385,55"
+                    />
+
+                    {/* Pontos de ancoragem */}
+                    <circle cx="95" cy="68" r="2.2" fill="#181C25" />
+                    <circle cx="95" cy="84" r="2.2" fill="#181C25" />
+                    <circle cx="180" cy="55" r="2.2" fill="#181C25" />
+                    <circle cx="180" cy="75" r="2.2" fill="#181C25" />
+                    <circle cx="355" cy="22" r="2.2" fill="#181C25" />
+                    <circle cx="355" cy="62" r="2.2" fill="#181C25" />
+
+                    {/* Haste Vertical de Destaque + Pílula Verde */}
+                    <line
+                      x1="265"
+                      y1="26"
+                      x2="265"
+                      y2="80"
+                      stroke="#181C25"
+                      strokeWidth="1.5"
+                    />
+                    <circle cx="265" cy="26" r="2.5" fill="#181C25" />
+                    <circle cx="265" cy="80" r="2.5" fill="#181C25" />
+                  </svg>
+
+                  {/* Pílula Verde Flutuante sobre a Haste */}
+                  <div className="absolute left-[66%] top-1/2 -translate-x-1/2 -translate-y-1/2 px-2.5 py-1 rounded-full bg-[#71FC8F] text-[#181C25] text-[10px] font-extrabold shadow-sm">
+                    {cashRatio}x
+                  </div>
                 </div>
+
+                {/* Rodapé Compacto com os Últimos Lançamentos do Período */}
+                {filteredTransactions.length > 0 && (
+                  <div className="pt-2.5 border-t border-black/5 flex items-center justify-between gap-2 text-[11px] text-[#6B6F78] truncate">
+                    <span className="truncate">
+                      Último:{' '}
+                      <strong className="text-[#181C25]">
+                        {filteredTransactions[0].description}
+                      </strong>
+                    </span>
+                    <strong className="text-[#181C25] shrink-0">
+                      {filteredTransactions[0].type === 'income' ? '+' : '-'} R${' '}
+                      {Number(filteredTransactions[0].total_amount).toFixed(2)}
+                    </strong>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         )}
 
-        {/* ABA 2: CLIENTES */}
+        {/* ========================================================= */}
+        {/* ABA 2: CLIENTES                                           */}
+        {/* ========================================================= */}
         {activeTab === 'customers' && (
-          <div className="bg-white rounded-[28px] p-6 md:p-8 border border-black/5 shadow-sm">
+          <div className="bg-white rounded-[28px] p-6 md:p-8 shadow-[0_2px_12px_rgba(24,28,37,0.03)]">
             <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-[#181C25]">Gestão de Clientes</h2>
@@ -775,7 +1132,7 @@ export default function PainelKeelPage() {
                   setCustPhone('')
                   setShowNewCustomerModal(true)
                 }}
-                className="px-5 py-2.5 rounded-2xl bg-[#181C25] text-white text-xs font-semibold flex items-center gap-2 hover:opacity-90"
+                className="px-5 py-2.5 rounded-full bg-[#181C25] text-white text-xs font-semibold flex items-center gap-2 hover:opacity-90"
               >
                 <Plus className="w-4 h-4 text-[#71FC8F]" />
                 Novo Cliente
@@ -789,7 +1146,10 @@ export default function PainelKeelPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {customers.map((c) => (
-                  <div key={c.id} className="p-5 rounded-2xl bg-[#F8F9FB] border border-black/5 flex flex-col justify-between">
+                  <div
+                    key={c.id}
+                    className="p-5 rounded-2xl bg-[#F8F9FB] border border-black/5 flex flex-col justify-between"
+                  >
                     <div>
                       <div className="flex items-start justify-between">
                         <div>
@@ -814,7 +1174,9 @@ export default function PainelKeelPage() {
                         >
                           WhatsApp →
                         </a>
-                      ) : <span className="text-[#6B6F78]">Sem telefone</span>}
+                      ) : (
+                        <span className="text-[#6B6F78]">Sem telefone</span>
+                      )}
 
                       <div className="flex items-center gap-1">
                         <button
@@ -845,26 +1207,27 @@ export default function PainelKeelPage() {
           </div>
         )}
 
-        {/* ABA 3: TRANSAÇÕES COM PESQUISA E FILTRO DE PAGAMENTO */}
+        {/* ========================================================= */}
+        {/* ABA 3: TRANSAÇÕES                                         */}
+        {/* ========================================================= */}
         {activeTab === 'transactions' && (
-          <div className="bg-white rounded-[28px] p-6 md:p-8 border border-black/5 shadow-sm">
+          <div className="bg-white rounded-[28px] p-6 md:p-8 shadow-[0_2px_12px_rgba(24,28,37,0.03)]">
             <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-[#181C25]">Histórico de Transações</h2>
                 <p className="text-xs text-[#6B6F78]">
-                  Entradas e saídas no período ({timeFilter === 'today' ? 'Hoje' : timeFilter === '7days' ? '7 dias' : timeFilter === 'month' ? 'Este Mês' : 'Total'})
+                  Entradas e saídas no período ({periodLabel})
                 </p>
               </div>
               <button
                 onClick={() => setShowNewTxModal(true)}
-                className="px-5 py-2.5 rounded-2xl bg-[#181C25] text-white text-xs font-semibold flex items-center gap-2"
+                className="px-5 py-2.5 rounded-full bg-[#181C25] text-white text-xs font-semibold flex items-center gap-2"
               >
                 <Plus className="w-4 h-4 text-[#71FC8F]" />
                 Novo Lançamento
               </button>
             </div>
 
-            {/* Barra de Filtros e Pesquisa */}
             <div className="flex flex-wrap items-center justify-between gap-3 mb-6 p-2 bg-[#F8F9FB] rounded-2xl border border-black/5">
               <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-black/5 flex-1 min-w-[220px]">
                 <Search className="w-4 h-4 text-[#6B6F78]" />
@@ -876,13 +1239,16 @@ export default function PainelKeelPage() {
                   className="w-full text-xs text-[#181C25] bg-transparent focus:outline-none"
                 />
                 {txSearch && (
-                  <button onClick={() => setTxSearch('')} className="text-[#6B6F78] hover:text-[#181C25]">
+                  <button
+                    onClick={() => setTxSearch('')}
+                    className="text-[#6B6F78] hover:text-[#181C25]"
+                  >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-[11px] font-bold text-[#6B6F78] flex items-center gap-1 pl-1">
                   <Filter className="w-3.5 h-3.5" /> Método:
                 </span>
@@ -890,13 +1256,21 @@ export default function PainelKeelPage() {
                   <button
                     key={method}
                     onClick={() => setTxMethodFilter(method)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${
                       txMethodFilter === method
                         ? 'bg-[#181C25] text-[#71FC8F]'
                         : 'bg-white text-[#6B6F78] border border-black/5 hover:text-[#181C25]'
                     }`}
                   >
-                    {method === 'all' ? 'Todos' : method === 'cash' ? 'Dinheiro' : method.toUpperCase()}
+                    {method === 'all'
+                      ? 'Todos'
+                      : method === 'cash'
+                      ? 'Dinheiro'
+                      : method === 'credit_card'
+                      ? 'Crédito'
+                      : method === 'debit_card'
+                      ? 'Débito'
+                      : 'PIX'}
                   </button>
                 ))}
               </div>
@@ -909,11 +1283,16 @@ export default function PainelKeelPage() {
             ) : (
               <div className="divide-y divide-black/5">
                 {tabTransactions.map((t) => (
-                  <div key={t.id} className="py-4 flex items-center justify-between gap-4 text-sm">
+                  <div
+                    key={t.id}
+                    className="py-4 flex items-center justify-between gap-4 text-sm"
+                  >
                     <div className="flex items-center gap-3.5">
                       <div
-                        className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold ${
-                          t.type === 'income' ? 'bg-[#71FC8F] text-[#181C25]' : 'bg-[#181C25] text-white'
+                        className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                          t.type === 'income'
+                            ? 'bg-[#71FC8F] text-[#181C25]'
+                            : 'bg-[#181C25] text-white'
                         }`}
                       >
                         {t.type === 'income' ? '+' : '-'}
@@ -921,7 +1300,8 @@ export default function PainelKeelPage() {
                       <div>
                         <div className="font-bold text-[#181C25]">{t.description}</div>
                         <div className="text-xs text-[#6B6F78]">
-                          {t.payment_method.toUpperCase()} • {new Date(t.occurred_at).toLocaleString('pt-BR')}
+                          {t.payment_method.toUpperCase()} •{' '}
+                          {new Date(t.occurred_at).toLocaleString('pt-BR')}
                         </div>
                       </div>
                     </div>
@@ -950,12 +1330,16 @@ export default function PainelKeelPage() {
           </div>
         )}
 
-        {/* ABA 4: CATÁLOGO COM INDICADORES DE STOCK */}
+        {/* ========================================================= */}
+        {/* ABA 4: CATÁLOGO                                           */}
+        {/* ========================================================= */}
         {activeTab === 'catalog' && (
-          <div className="bg-white rounded-[28px] p-6 md:p-8 border border-black/5 shadow-sm">
+          <div className="bg-white rounded-[28px] p-6 md:p-8 shadow-[0_2px_12px_rgba(24,28,37,0.03)]">
             <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
               <div>
-                <h2 className="text-2xl font-bold text-[#181C25]">Catálogo de Serviços e Produtos</h2>
+                <h2 className="text-2xl font-bold text-[#181C25]">
+                  Catálogo de Serviços e Produtos
+                </h2>
                 <p className="text-xs text-[#6B6F78]">
                   Controle de preços, margem líquida e stock de produtos
                 </p>
@@ -969,7 +1353,7 @@ export default function PainelKeelPage() {
                   setItemStock('')
                   setShowNewCatalogModal(true)
                 }}
-                className="px-5 py-2.5 rounded-2xl bg-[#181C25] text-white text-xs font-semibold flex items-center gap-2"
+                className="px-5 py-2.5 rounded-full bg-[#181C25] text-white text-xs font-semibold flex items-center gap-2"
               >
                 <Plus className="w-4 h-4 text-[#71FC8F]" />
                 Adicionar Item
@@ -984,10 +1368,14 @@ export default function PainelKeelPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {catalog.map((item) => {
                   const itemProfit = Number(item.sale_price) - Number(item.cost_price)
-                  const isOutOfStock = item.type === 'product' && item.stock_qty !== null && item.stock_qty <= 0
+                  const isOutOfStock =
+                    item.type === 'product' && item.stock_qty !== null && item.stock_qty <= 0
 
                   return (
-                    <div key={item.id} className="p-5 rounded-2xl bg-[#F8F9FB] border border-black/5 flex flex-col justify-between">
+                    <div
+                      key={item.id}
+                      className="p-5 rounded-2xl bg-[#F8F9FB] border border-black/5 flex flex-col justify-between"
+                    >
                       <div>
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-1.5">
@@ -995,9 +1383,13 @@ export default function PainelKeelPage() {
                               {item.type === 'service' ? 'Serviço' : 'Produto'}
                             </span>
                             {item.type === 'product' && (
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                isOutOfStock ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-700'
-                              }`}>
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  isOutOfStock
+                                    ? 'bg-rose-100 text-rose-600'
+                                    : 'bg-emerald-100 text-emerald-700'
+                                }`}
+                              >
                                 {isOutOfStock ? 'Sem Stock' : `${item.stock_qty ?? 0} em stock`}
                               </span>
                             )}
@@ -1011,7 +1403,9 @@ export default function PainelKeelPage() {
                                 setItemType(item.type)
                                 setItemPrice(String(item.sale_price))
                                 setItemCost(String(item.cost_price))
-                                setItemStock(item.stock_qty !== null ? String(item.stock_qty) : '')
+                                setItemStock(
+                                  item.stock_qty !== null ? String(item.stock_qty) : ''
+                                )
                                 setShowNewCatalogModal(true)
                               }}
                               className="p-1 rounded hover:bg-black/5 text-[#6B6F78]"
@@ -1052,7 +1446,7 @@ export default function PainelKeelPage() {
             )}
           </div>
         )}
-
+      </div>
 
       {/* MODAL FECHO DE CAIXA */}
       {showCashCloseModal && (
@@ -1067,8 +1461,8 @@ export default function PainelKeelPage() {
                   Fecho de Caixa • {new Date().toLocaleDateString('pt-BR')}
                 </h3>
               </div>
-              <button 
-                onClick={() => setShowCashCloseModal(false)} 
+              <button
+                onClick={() => setShowCashCloseModal(false)}
                 className="w-9 h-9 rounded-full bg-[#F5F6F8] flex items-center justify-center text-[#6B6F78] hover:bg-black/5"
               >
                 <X className="w-4 h-4" />
@@ -1092,9 +1486,7 @@ export default function PainelKeelPage() {
 
               <div className="bg-[#181C25] text-white rounded-2xl p-3.5 text-center">
                 <span className="text-[11px] text-[#71FC8F] block mb-1">Lucro Real</span>
-                <strong className="text-base font-bold">
-                  R$ {todayNetProfit.toFixed(2)}
-                </strong>
+                <strong className="text-base font-bold">R$ {todayNetProfit.toFixed(2)}</strong>
               </div>
             </div>
 
@@ -1105,8 +1497,12 @@ export default function PainelKeelPage() {
 
               <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[#71FC8F]/15 to-transparent border border-[#71FC8F]/40 flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-bold text-[#181C25] block">💵 Dinheiro em Espécie (Gaveta)</span>
-                  <span className="text-[11px] text-[#6B6F78]">Valor físico que deve estar no caixa</span>
+                  <span className="text-xs font-bold text-[#181C25] block">
+                    💵 Dinheiro em Espécie (Gaveta)
+                  </span>
+                  <span className="text-[11px] text-[#6B6F78]">
+                    Valor físico que deve estar no caixa
+                  </span>
                 </div>
                 <strong className="text-base font-bold text-[#181C25]">
                   R$ {cashInDrawer.toFixed(2)}
@@ -1115,7 +1511,9 @@ export default function PainelKeelPage() {
 
               <div className="p-3.5 rounded-2xl bg-[#F8F9FB] border border-black/5 flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-semibold text-[#181C25] block">⚡ PIX (Bancário)</span>
+                  <span className="text-xs font-semibold text-[#181C25] block">
+                    ⚡ PIX (Bancário)
+                  </span>
                   <span className="text-[11px] text-[#6B6F78]">Entradas em conta</span>
                 </div>
                 <strong className="text-sm font-bold text-[#181C25]">
@@ -1125,8 +1523,12 @@ export default function PainelKeelPage() {
 
               <div className="p-3.5 rounded-2xl bg-[#F8F9FB] border border-black/5 flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-semibold text-[#181C25] block">💳 Cartão de Crédito</span>
-                  <span className="text-[11px] text-[#6B6F78]">Recebimentos processados em crédito</span>
+                  <span className="text-xs font-semibold text-[#181C25] block">
+                    💳 Cartão de Crédito
+                  </span>
+                  <span className="text-[11px] text-[#6B6F78]">
+                    Recebimentos processados em crédito
+                  </span>
                 </div>
                 <strong className="text-sm font-bold text-[#181C25]">
                   R$ {creditIncomes.toFixed(2)}
@@ -1135,8 +1537,12 @@ export default function PainelKeelPage() {
 
               <div className="p-3.5 rounded-2xl bg-[#F8F9FB] border border-black/5 flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-semibold text-[#181C25] block">💳 Cartão de Débito</span>
-                  <span className="text-[11px] text-[#6B6F78]">Recebimentos processados em débito</span>
+                  <span className="text-xs font-semibold text-[#181C25] block">
+                    💳 Cartão de Débito
+                  </span>
+                  <span className="text-[11px] text-[#6B6F78]">
+                    Recebimentos processados em débito
+                  </span>
                 </div>
                 <strong className="text-sm font-bold text-[#181C25]">
                   R$ {debitIncomes.toFixed(2)}
@@ -1179,7 +1585,10 @@ export default function PainelKeelPage() {
           <div className="bg-white rounded-[32px] max-w-md w-full p-7 shadow-2xl border border-black/5">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-bold text-[#181C25]">Lançamento Rápido de Caixa</h3>
-              <button onClick={() => setShowNewTxModal(false)} className="w-8 h-8 rounded-full bg-[#F5F6F8] flex items-center justify-center text-[#6B6F78]">
+              <button
+                onClick={() => setShowNewTxModal(false)}
+                className="w-8 h-8 rounded-full bg-[#F5F6F8] flex items-center justify-center text-[#6B6F78]"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -1190,7 +1599,9 @@ export default function PainelKeelPage() {
                   type="button"
                   onClick={() => setTxType('income')}
                   className={`py-2.5 rounded-xl text-xs font-bold transition ${
-                    txType === 'income' ? 'bg-[#71FC8F] text-[#181C25] shadow-sm' : 'text-[#6B6F78]'
+                    txType === 'income'
+                      ? 'bg-[#71FC8F] text-[#181C25] shadow-sm'
+                      : 'text-[#6B6F78]'
                   }`}
                 >
                   + Entrada / Venda
@@ -1199,7 +1610,9 @@ export default function PainelKeelPage() {
                   type="button"
                   onClick={() => setTxType('expense')}
                   className={`py-2.5 rounded-xl text-xs font-bold transition ${
-                    txType === 'expense' ? 'bg-[#181C25] text-white shadow-sm' : 'text-[#6B6F78]'
+                    txType === 'expense'
+                      ? 'bg-[#181C25] text-white shadow-sm'
+                      : 'text-[#6B6F78]'
                   }`}
                 >
                   - Saída / Despesa
@@ -1219,7 +1632,10 @@ export default function PainelKeelPage() {
                     <option value="">Lançamento Avulso (Sem catálogo)</option>
                     {catalog.map((item) => (
                       <option key={item.id} value={item.id}>
-                        {item.name} — R$ {Number(item.sale_price).toFixed(2)} {item.type === 'product' && item.stock_qty !== null ? `(${item.stock_qty} restam)` : ''}
+                        {item.name} — R$ {Number(item.sale_price).toFixed(2)}{' '}
+                        {item.type === 'product' && item.stock_qty !== null
+                          ? `(${item.stock_qty} restam)`
+                          : ''}
                       </option>
                     ))}
                   </select>
@@ -1238,27 +1654,37 @@ export default function PainelKeelPage() {
                   >
                     <option value="">Cliente Balcão (Não registado)</option>
                     {customers.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
                     ))}
                   </select>
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-[#6B6F78] mb-1">Descrição</label>
+                <label className="block text-xs font-semibold text-[#6B6F78] mb-1">
+                  Descrição
+                </label>
                 <input
                   type="text"
                   required
                   value={txDesc}
                   onChange={(e) => setTxDesc(e.target.value)}
-                  placeholder={txType === 'income' ? 'Ex: Corte Degradê ou Pomada Matte' : 'Ex: Compra de Lâminas / Luz'}
+                  placeholder={
+                    txType === 'income'
+                      ? 'Ex: Corte Degradê ou Pomada Matte'
+                      : 'Ex: Compra de Lâminas / Luz'
+                  }
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#F5F6F8] text-sm text-[#181C25] focus:outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[#6B6F78] mb-1">Valor Total (R$)</label>
+                  <label className="block text-xs font-semibold text-[#6B6F78] mb-1">
+                    Valor Total (R$)
+                  </label>
                   <input
                     type="number"
                     step="0.01"
@@ -1272,7 +1698,9 @@ export default function PainelKeelPage() {
 
                 {txType === 'income' && (
                   <div>
-                    <label className="block text-xs font-semibold text-[#6B6F78] mb-1">Custo Direto (R$)</label>
+                    <label className="block text-xs font-semibold text-[#6B6F78] mb-1">
+                      Custo Direto (R$)
+                    </label>
                     <input
                       type="number"
                       step="0.01"
@@ -1286,7 +1714,9 @@ export default function PainelKeelPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#6B6F78] mb-1">Forma de Pagamento</label>
+                <label className="block text-xs font-semibold text-[#6B6F78] mb-1">
+                  Forma de Pagamento
+                </label>
                 <select
                   value={txMethod}
                   onChange={(e) => setTxMethod(e.target.value)}
@@ -1302,7 +1732,7 @@ export default function PainelKeelPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-3.5 rounded-2xl bg-[#181C25] text-white font-bold text-xs hover:opacity-95 transition mt-2"
+                className="w-full py-3.5 rounded-full bg-[#181C25] text-white font-bold text-xs hover:opacity-95 transition mt-2"
               >
                 {submitting ? 'A registar...' : 'Confirmar Lançamento'}
               </button>
@@ -1319,13 +1749,18 @@ export default function PainelKeelPage() {
               <h3 className="text-lg font-bold text-[#181C25]">
                 {editingCustomer ? 'Editar Cliente' : 'Novo Cliente'}
               </h3>
-              <button onClick={() => setShowNewCustomerModal(false)} className="text-[#6B6F78]">
+              <button
+                onClick={() => setShowNewCustomerModal(false)}
+                className="text-[#6B6F78]"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <form onSubmit={handleSaveCustomer} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[#6B6F78] mb-1">Nome Completo</label>
+                <label className="block text-xs font-semibold text-[#6B6F78] mb-1">
+                  Nome Completo
+                </label>
                 <input
                   type="text"
                   required
@@ -1336,7 +1771,9 @@ export default function PainelKeelPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#6B6F78] mb-1">WhatsApp</label>
+                <label className="block text-xs font-semibold text-[#6B6F78] mb-1">
+                  WhatsApp
+                </label>
                 <input
                   type="text"
                   value={custPhone}
@@ -1348,7 +1785,7 @@ export default function PainelKeelPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-3 rounded-2xl bg-[#71FC8F] text-[#181C25] font-bold text-xs"
+                className="w-full py-3 rounded-full bg-[#71FC8F] text-[#181C25] font-bold text-xs"
               >
                 {editingCustomer ? 'Guardar Alterações' : 'Registar Cliente'}
               </button>
@@ -1365,7 +1802,10 @@ export default function PainelKeelPage() {
               <h3 className="text-lg font-bold text-[#181C25]">
                 {editingCatalogItem ? 'Editar Item' : 'Novo Serviço / Produto'}
               </h3>
-              <button onClick={() => setShowNewCatalogModal(false)} className="text-[#6B6F78]">
+              <button
+                onClick={() => setShowNewCatalogModal(false)}
+                className="text-[#6B6F78]"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -1394,7 +1834,9 @@ export default function PainelKeelPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[#6B6F78] mb-1">Preço Venda (R$)</label>
+                  <label className="block text-xs font-semibold text-[#6B6F78] mb-1">
+                    Preço Venda (R$)
+                  </label>
                   <input
                     type="number"
                     step="0.01"
@@ -1406,7 +1848,9 @@ export default function PainelKeelPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#6B6F78] mb-1">Custo (R$)</label>
+                  <label className="block text-xs font-semibold text-[#6B6F78] mb-1">
+                    Custo (R$)
+                  </label>
                   <input
                     type="number"
                     step="0.01"
@@ -1420,7 +1864,9 @@ export default function PainelKeelPage() {
 
               {itemType === 'product' && (
                 <div>
-                  <label className="block text-xs font-semibold text-[#6B6F78] mb-1">Quantidade em Stock</label>
+                  <label className="block text-xs font-semibold text-[#6B6F78] mb-1">
+                    Quantidade em Stock
+                  </label>
                   <input
                     type="number"
                     value={itemStock}
@@ -1434,7 +1880,7 @@ export default function PainelKeelPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-3 rounded-2xl bg-[#181C25] text-white font-bold text-xs"
+                className="w-full py-3 rounded-full bg-[#181C25] text-white font-bold text-xs"
               >
                 {editingCatalogItem ? 'Guardar Item' : 'Adicionar ao Catálogo'}
               </button>
